@@ -97,6 +97,18 @@ def get_parser():
     parser.add_argument("-b", "--batch_size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--mse", action="store_true", help="Use MSE instead of L1")
+
+    # supplemented by Holik Viliam
+    parser.add_argument("--logL1", action="store_true", help="Use logL1 instead of L1")
+    parser.add_argument("--logL2", action="store_true", help="Use logL2 instead of L1")
+    parser.add_argument("--SISDR", action="store_true", help="Use SISDR instead of L1")
+    parser.add_argument("--freqL1", action="store_true", help="Use L1 in freq domain")
+    parser.add_argument("--freqMSE", action="store_true", help="Use MSE in freq domain")
+    parser.add_argument("--freqLogL1", action="store_true", help="Use logL1 in freq domain")
+    parser.add_argument("--freqLogL2", action="store_true", help="Use logL2 in freq domain")
+    parser.add_argument("--freqSISDR", action="store_true", help="Use SISDR in freq domain")
+    ##############################
+
     parser.add_argument("--init", help="Initialize from a pre-trained model.")
 
     # Augmentation options
@@ -178,6 +190,15 @@ def get_parser():
                         action="store_true",
                         help="Predict chunks by chunks for valid and test. Required for tasnet")
     parser.add_argument("--X", type=int, default=8)
+
+    # supplemented by Holik Viliam
+    parser.add_argument("--N", type=int, default=256)
+    parser.add_argument("--L", type=int, default=20)
+    parser.add_argument("--B", type=int, default=256)
+    parser.add_argument("--H", type=int, default=512)
+    parser.add_argument("--P", type=int, default=3)
+    parser.add_argument("--R", type=int, default=4)
+    ##############################
 
     # Other options
     parser.add_argument("--show",

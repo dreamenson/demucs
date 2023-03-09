@@ -156,6 +156,7 @@ class Encoder(nn.Module):
             mixture_w: [M, N, K], where K = (T-L)/(L/2)+1 = 2T/L-1
         """
         mixture_w = F.relu(self.conv1d_U(mixture))  # [M, N, K]
+        #print("Enkoder: mixIN= " + mixture.size() + " mixOUT= " + mixture_w.size())
         return mixture_w
 
 
@@ -184,6 +185,7 @@ class Decoder(nn.Module):
         m, c, k, _ = est_source.size()
         est_source = est_source.view(m, c, k, self.audio_channels, -1).transpose(2, 3).contiguous()
         est_source = overlap_and_add(est_source, self.L // 2)  # M x C x ac x T
+        #print("Dekoder: mixIN= " + mixture_w.size() + " estMASK= " + est_mask.size() + " estSOURCE= " + est_source.size())
         return est_source
 
 

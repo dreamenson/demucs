@@ -30,6 +30,11 @@ from .utils import (human_seconds, load_model, save_model, get_state,
                     save_state, sizeof_fmt, get_quantizer)
 from .wav import get_wav_datasets, get_musdb_wav_datasets
 
+# added by Holik Viliam
+from .loss import (LogL1, LogL2, SISDR, FreqL1, FreqMSE,
+                   FreqLogL1, FreqLogL2, FreqSISDR)
+##############################
+
 
 @dataclass
 class SavedState:
@@ -98,6 +103,8 @@ def main():
     elif args.tasnet:
         model = ConvTasNet(audio_channels=args.audio_channels,
                            samplerate=args.samplerate, X=args.X,
+                           N=args.N, L=args.L, B=args.B,
+                           H=args.H, P=args.P, R=args.R,
                            segment_length=4 * args.samples,
                            sources=SOURCES)
     else:
@@ -175,6 +182,26 @@ def main():
 
     if args.mse:
         criterion = nn.MSELoss()
+
+    # added by Holik Viliam
+    elif args.logL1:
+        criterion = LogL1()
+    elif args.logL2:
+        criterion = LogL2()
+    elif args.SISDR:
+        criterion = SISDR()
+    elif args.freqL1:
+        criterion = FreqL1()
+    elif args.freqMSE:
+        criterion = FreqMSE()
+    elif args.freqLogL1:
+        criterion = FreqLogL1()
+    elif args.freqLogL2:
+        criterion = FreqLogL2()
+    elif args.freqSISDR:
+        criterion = FreqSISDR()
+    ##############################
+
     else:
         criterion = nn.L1Loss()
 
@@ -238,8 +265,15 @@ def main():
     else:
         dmodel = model
 
+    counter = 0         # added
+    small_lr = 0	# added
     for epoch in range(len(saved.metrics), args.epochs):
         begin = time.time()
+        
+        for g in optimizer.param_groups:    # added
+            lr = g['lr']
+            print("Actual LR = ", lr)
+
         model.train()
         train_loss, model_size = train_model(
             epoch, train_set, dmodel, criterion, optimizer, augment,
@@ -268,11 +302,24 @@ def main():
 
         duration = time.time() - begin
         if valid_loss < best_loss and ms <= args.ms_target:
+            counter = 0     # added
             best_loss = valid_loss
             saved.best_state = {
                 key: value.to("cpu").clone()
                 for key, value in model.state_dict().items()
             }
+        ### added section
+        else:
+            counter += 1
+            if counter == 8:
+                for g in optimizer.param_groups:
+                    lr = g['lr']
+                    print("Actual LR = ", lr)
+                    if lr <= 1e-8:
+                        small_lr = 1
+                    g['lr'] = lr * 0.5
+                counter = 0
+        ### end of added section
 
         saved.metrics.append({
             "train": train_loss,
@@ -293,9 +340,14 @@ def main():
             checkpoint_tmp.rename(checkpoint)
 
         print(f"Epoch {epoch:03d}: "
+              f"LR={lr:.8f} "    # added
               f"train={train_loss:.8f} valid={valid_loss:.8f} best={best_loss:.4f} ms={ms:.2f}MB "
               f"cms={cms:.2f}MB "
               f"duration={human_seconds(duration)}")
+
+	# added break
+        if small_lr == 1:
+            break
 
     if args.world_size > 1:
         distributed.barrier()

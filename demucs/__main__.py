@@ -1,4 +1,4 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
+3# Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #
 # This source code is licensed under the license found in the
@@ -42,6 +42,7 @@ class SavedState:
     last_state: dict = None
     best_state: dict = None
     optimizer: dict = None
+    counter: int = 0    # added
 
 
 def main():
@@ -265,15 +266,16 @@ def main():
     else:
         dmodel = model
 
-    counter = 0         # added
-    small_lr = 0	# added
+    counter = saved.counter         # added
     for epoch in range(len(saved.metrics), args.epochs):
-        begin = time.time()
-        
         for g in optimizer.param_groups:    # added
-            lr = g['lr']
-            print("Actual LR = ", lr)
+            ac_lr = g['lr']
+            if ac_lr <= 1e-8:
+                break
+            print(f"Actual LR={ac_lr}, "
+                  f"counter={counter}")
 
+        begin = time.time()
         model.train()
         train_loss, model_size = train_model(
             epoch, train_set, dmodel, criterion, optimizer, augment,
@@ -311,12 +313,10 @@ def main():
         ### added section
         else:
             counter += 1
-            if counter == 8:
+            if counter >= 8:
                 for g in optimizer.param_groups:
                     lr = g['lr']
                     print("Actual LR = ", lr)
-                    if lr <= 1e-8:
-                        small_lr = 1
                     g['lr'] = lr * 0.5
                 counter = 0
         ### end of added section
@@ -335,19 +335,16 @@ def main():
 
         saved.last_state = model.state_dict()
         saved.optimizer = optimizer.state_dict()
+        saved.counter = counter     # added
         if args.rank == 0 and not args.test:
             th.save(saved, checkpoint_tmp)
             checkpoint_tmp.rename(checkpoint)
 
         print(f"Epoch {epoch:03d}: "
-              f"LR={lr:.8f} "    # added
+              #f"LR={lr:.8f} "    # added
               f"train={train_loss:.8f} valid={valid_loss:.8f} best={best_loss:.4f} ms={ms:.2f}MB "
               f"cms={cms:.2f}MB "
               f"duration={human_seconds(duration)}")
-
-	# added break
-        if small_lr == 1:
-            break
 
     if args.world_size > 1:
         distributed.barrier()

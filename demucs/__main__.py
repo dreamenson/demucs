@@ -267,13 +267,17 @@ def main():
         dmodel = model
 
     counter = saved.counter         # added
+
     for epoch in range(len(saved.metrics), args.epochs):
-        for g in optimizer.param_groups:    # added
+        ### added scection
+        break_out = False
+        for g in optimizer.param_groups:
             ac_lr = g['lr']
             if ac_lr <= 1e-8:
-                break
-            print(f"Actual LR={ac_lr}, "
-                  f"counter={counter}")
+                break_out = True
+	if break_out:
+            break
+        ### end
 
         begin = time.time()
         model.train()
@@ -316,10 +320,11 @@ def main():
             if counter >= 8:
                 for g in optimizer.param_groups:
                     lr = g['lr']
+                    lr *= 0.5
                     print("Actual LR = ", lr)
-                    g['lr'] = lr * 0.5
+                    g['lr'] = lr
                 counter = 0
-        ### end of added section
+        ### end
 
         saved.metrics.append({
             "train": train_loss,

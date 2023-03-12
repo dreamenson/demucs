@@ -1,4 +1,4 @@
-3# Copyright (c) Facebook, Inc. and its affiliates.
+# Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #
 # This source code is licensed under the license found in the
@@ -273,9 +273,9 @@ def main():
         break_out = False
         for g in optimizer.param_groups:
             ac_lr = g['lr']
-            if ac_lr <= 1e-8:
+            if ac_lr <= 1e-6:
                 break_out = True
-	if break_out:
+        if break_out:
             break
         ### end
 

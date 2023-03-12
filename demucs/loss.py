@@ -4,7 +4,7 @@ from torch import nn
 EPS = 1e-8
 
 def make_freq(predictions, target,
-		len = 1024,
+		len = 2048,
 		hop = 512,
 		pad = "constant"):
     """

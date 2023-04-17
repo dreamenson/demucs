@@ -1,3 +1,10 @@
+#
+# This file contain various loss functions
+# for neural network training
+#
+# author: Viliam Holik
+#
+
 import torch
 from torch import nn
 
@@ -62,9 +69,9 @@ class FreqLogL1(nn.Module):
 
     def forward(self, predictions, target):
         predictions, target = make_freq(predictions, target)
-        if predictions.dim() == 5:	# TRAIN cycle [batch, sources, stereo, frames, freq bin]
+        if predictions.dim() == 5:	# TRAIN cycle [batch, sources, stereo, freq bin, frames]
             dim_list = (1, 2, 3, 4)
-        else:				# VALID cycle [sources, stereo, frames, freq bin]
+        else:				# VALID cycle [sources, stereo, freq bin, frames]
             dim_list = (0, 1, 2, 3)
 
         diff = torch.abs(torch.abs(predictions) - torch.abs(target))
@@ -165,17 +172,6 @@ class SISDR(nn.Module):
         loss_value = 10 * torch.mean(log)
         return -loss_value
 
-    def old(self, predictions, target):
-        alpha_1 = torch.sum(torch.mul(predictions, target), dim=last, keepdim=True)
-        alpha = torch.div(alpha_1, torch.sum(torch.square(target), dim=last, keepdim=True))
-        root = torch.mul(alpha, target)
-        numerator = torch.sum(torch.square(torch.abs(root)), dim=dim_list, keepdim=True)
-        denominator = torch.sum(torch.square(torch.abs(root - predictions)), dim=dim_list, keepdim=True)
-        log = torch.log10(torch.mean(torch.div(numerator, denominator + EPS), dim=dim_list) + EPS)
-        loss_value = 10 * torch.mean(log)
-        return -loss_value
-
-
 class FreqSISDR(nn.Module):
     """SI-SDR loss function in frequency domain"""
     def __init__(self):
@@ -187,23 +183,3 @@ class FreqSISDR(nn.Module):
         predictions = torch.flatten(torch.abs(predictions), start_dim=-2)
         target = torch.flatten(torch.abs(target), start_dim=-2)
         return self.crit(predictions, target)
-
-    def old(self, predictions, target):
-        predictions, target = make_freq(predictions, target)
-        predictions = torch.abs(predictions)
-        target = torch.abs(target)
-        if predictions.dim() == 5:	# TRAIN
-            dim_list = (1, 2, 3, 4)
-            last_2 = (3, 4)
-        else:				# VALID
-            dim_list = (0, 1, 2, 3)
-            last_2 = (2, 3)
-
-        alpha_1 = torch.sum(torch.mul(predictions, target), dim=last_2, keepdim=True)
-        alpha = torch.div(alpha_1, torch.sum(torch.square(target), dim=last_2, keepdim=True))
-        root = torch.mul(alpha, target)
-        numerator = torch.sum(torch.square(torch.abs(root)), dim=dim_list, keepdim=True)
-        denominator = torch.sum(torch.square(torch.abs(root - predictions)), dim=dim_list, keepdim=True)
-        log = torch.log10(torch.mean(torch.div(numerator, denominator + EPS), dim=dim_list) + EPS)
-        loss_value = 10 * torch.mean(log)
-        return -loss_value

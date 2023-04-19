@@ -37,7 +37,7 @@ def train_model(epoch,
         batch_size //= world_size
         loader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=workers)
     else:
-	# pre trenovanie pouzit shuffle true, false pri ladeni
+	# for train use shuffle true and false for tuning
         loader = DataLoader(dataset, batch_size=batch_size, num_workers=workers, shuffle=True)
     current_loss = 0
     model_size = 0
@@ -49,11 +49,13 @@ def train_model(epoch,
                        file=sys.stdout,
                        unit=" batch")
         total_loss = 0
-        #cnt = 0		# ladenie
+        #cnt = 0		# tuning
         for idx, sources in enumerate(tq):
-            #cnt = cnt +1	#ladenie
-            #if cnt > 10:	#ladenie
-            #    break		#ladenie
+            ### section for tuning
+            #cnt = cnt +1
+            #if cnt > 10:
+            #    break
+            ### end of section
 
             if len(sources) < batch_size:
                 # skip uncomplete batch for augment.Remix to work properly

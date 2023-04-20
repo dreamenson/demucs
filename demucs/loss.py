@@ -20,7 +20,7 @@ def make_freq(predictions, target,
     Input  time domain      3D/4D - [(batch,) sources, stereo, samples]
     Output frequency domain 4D/5D - [(batch,) sources, stereo, frames, freq bin]
     """
-    win = torch.hann_window(len, device="cuda")
+    win = torch.hann_window(len, device=torch.device('cuda'))
 
     # STFT input must be either 1D or 2D, flatten 3D/4D tensor to acceptable shape
     if target.dim() == 4:	# TRAIN cycle [batch, sources, stereo, samples]
@@ -56,8 +56,8 @@ class LogL1(nn.Module):
             dim_list = (0, 1, 2)
 
         diff = torch.abs(predictions - target)
-        diff_mean = torch.mean(diff, dim=dim_list)
-        log = torch.log10(diff_mean + EPS)
+        diff_sum = torch.sum(diff, dim=dim_list)
+        log = torch.log10(diff_sum + EPS)
         loss_value = 10 * torch.mean(log)
         return loss_value
 
@@ -75,8 +75,8 @@ class FreqLogL1(nn.Module):
             dim_list = (0, 1, 2, 3)
 
         diff = torch.abs(torch.abs(predictions) - torch.abs(target))
-        diff_mean = torch.mean(diff, dim=dim_list)
-        log = torch.log10(diff_mean + EPS)
+        diff_sum = torch.sum(diff, dim=dim_list)
+        log = torch.log10(diff_sum + EPS)
         loss_value = 10 * torch.mean(log)
         return loss_value
 
@@ -117,8 +117,8 @@ class LogL2(nn.Module):
             dim_list = (0, 1, 2)
 
         diff_squared = torch.square(predictions - target)
-        diff_mean = torch.mean(diff_squared, dim=dim_list)
-        log = torch.log10(diff_mean + EPS)
+        diff_sum = torch.sum(diff_squared, dim=dim_list)
+        log = torch.log10(diff_sum + EPS)
         loss_value = 10 * torch.mean(log)
         return loss_value
 
@@ -136,8 +136,8 @@ class FreqLogL2(nn.Module):
             dim_list = (0, 1, 2, 3)
 
         diff = torch.abs(predictions) - torch.abs(target)
-        diff_mean = torch.mean(torch.square(diff), dim=dim_list)
-        log = torch.log10(diff_mean + EPS)
+        diff_sum = torch.sum(torch.square(diff), dim=dim_list)
+        log = torch.log10(diff_sum + EPS)
         loss_value = 10 * torch.mean(log)
         return loss_value
 
@@ -147,7 +147,7 @@ class SISDR(nn.Module):
     def __init__(self):
         super(SISDR, self).__init__()
 
-    def forward(self, predictions, target):
+    def forward_old(self, predictions, target):
         if predictions.dim() == 4:	# TRAIN
             dim_list = (1, 2, 3)
             last = 3
@@ -171,6 +171,25 @@ class SISDR(nn.Module):
         log = torch.log10(torch.mean(numerator / (denominator + EPS), dim=dim_list) + EPS)
         loss_value = 10 * torch.mean(log)
         return -loss_value
+
+    def forward(self, est_targets, targets):
+        if targets.dim() == 4:      # TRAIN
+            dim_list = (1, 2, 3)
+            last = 3
+        else:                           # VALID
+            dim_list = (0, 1, 2)
+            last = 2
+
+        pair_wise_dot = torch.sum(est_targets * targets, dim=last, keepdim=True)
+        s_target_energy = torch.sum(targets ** 2, dim=last, keepdim=True) + EPS
+        scaled_targets = pair_wise_dot * targets / s_target_energy
+
+        e_noise = est_targets - scaled_targets
+        pair_wise_sdr = torch.sum(scaled_targets ** 2, dim=last) / (
+            torch.sum(e_noise ** 2, dim=last) + EPS
+        )
+        pair_wise_sdr = 10 * torch.log10(pair_wise_sdr + EPS)
+        return -torch.mean(pair_wise_sdr)
 
 class FreqSISDR(nn.Module):
     """SI-SDR loss function in frequency domain"""
